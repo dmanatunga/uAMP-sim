@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 import argparse
 from collections import defaultdict, deque
 
@@ -79,7 +79,7 @@ class Simulator(SimulatorBase):
 
             cur_event = self.event_queue.peek()
             trace_event = self.trace_reader.peek_event()
-            if trace_event and cur_event.get_timestamp() > trace_event.get_timestamp():
+            if trace_event and cur_event.timestamp > trace_event.timestamp:
                 self.populate_event_queue_from_trace()
                 continue
 
@@ -113,7 +113,7 @@ class Simulator(SimulatorBase):
 
     def broadcast(self, event):
         # Get the set of listeners for the given event type
-        listeners = self.event_listeners[event.get_type()]
+        listeners = self.event_listeners[event.event_type]
         for (event_filter, callback) in listeners:
             # Send event to each subscribed listener
             if not event_filter or event_filter(event):
@@ -123,36 +123,39 @@ class Simulator(SimulatorBase):
         pass
 
     def debug(self):
-        command = input("(uamp-sim debug) $ ")
-        if command:
-            tokens = command.split(sep=' ')
-            cmd = tokens[0]
-            args = tokens[1:]
-            if cmd == 'quit':
-                # TODO(dmanatunga): Handle simulation quitting better
-                print("Terminating Simulation")
-                exit(1)
-            elif cmd == 'interval':
-                if len(args) == 1:
-                    try:
-                        self.debug_interval = int(args[0])
-                    except ValueError:
-                        print("Command Usage Error: interval command expects one numerical value")
-                else:
-                    print("Command Usage Error: interval command expects one numerical value")
-            elif cmd == 'verbose':
-                if len(args) == 0:
-                    self.verbose = True
-                elif len(args) == 1:
-                    if args[0] == 'on':
-                        self.verbose = True
-                    elif args[0] == 'off':
-                        self.verbose = False
+        while True:
+            command = input("(uamp-sim debug) $ ")
+            if command:
+                tokens = command.split(sep=' ')
+                cmd = tokens[0]
+                args = tokens[1:]
+                if cmd == 'quit' or cmd == 'exit' or cmd == 'q':
+                    # TODO(dmanatunga): Handle simulation quitting better
+                    print("Terminating Simulation")
+                    exit(1)
+                elif cmd == 'interval':
+                    if len(args) == 1:
+                        try:
+                            self.debug_interval = int(args[0])
+                        except ValueError:
+                            print("Command Usage Error: interval command expects one numerical value")
                     else:
-                        print("Command Usage Error: verbose command expects 'on' or 'off' for argument")
+                        print("Command Usage Error: interval command expects one numerical value")
+                elif cmd == 'verbose':
+                    if len(args) == 0:
+                        self.verbose = True
+                    elif len(args) == 1:
+                        if args[0] == 'on':
+                            self.verbose = True
+                        elif args[0] == 'off':
+                            self.verbose = False
+                        else:
+                            print("Command Usage Error: verbose command expects 'on' or 'off' for argument")
 
-                else:
-                    print("Command Usage Error: verbose command expects at most one argument")
+                    else:
+                        print("Command Usage Error: verbose command expects at most one argument")
+            else:
+                break
 
 
 def parse_args():

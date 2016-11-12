@@ -1,4 +1,8 @@
 from enum import Enum, unique
+import json
+from datetime import datetime
+import dateutil.parser
+import device
 
 
 @unique
@@ -44,7 +48,7 @@ class EventType(Enum):
     BATTERY_PLUG_STATE = 'battery.plug_status'
     BATTERY_ENERGY_STATE = 'battery.energy_state'
 
-    STORAGE = 'storage'
+    DEVICE_STORAGE = 'storage'
     HEADSET = 'headset'
     DOCK = 'dock'
     BLUETOOTH = 'bluetooth'
@@ -110,7 +114,7 @@ class AppActivityUsageEvent(Event):
     Attributes:
         app_id (str): Unique id representing launched application
         source_class (str): Name of applications activity
-        usage_event_type (:obj:'AppActivityUsageEvent':'UsageEvent'):
+        usage_event (:obj:'AppActivityUsageEvent':'UsageEvent'):
             Type of usage event
     """
 
@@ -121,9 +125,8 @@ class AppActivityUsageEvent(Event):
         Enumeration of different usage events. Correlated to constants
         defined in Android's UsageEvents.Event class.
         """
-        MOVE_TO_BACKGROUND = 0
+        MOVE_BACKGROUND = 0
         MOVE_FOREGROUND = 1
-
 
     def __init__(self, timestamp, app_id, source_class, usage_event):
         Event.__init__(self, event_type=EventType.APP_ACTIVITY_USAGE, timestamp=timestamp)
@@ -216,7 +219,7 @@ class PackageEvent(Event):
     def __init__(self, timestamp, package_event, package=None):
         Event.__init__(self, event_type=EventType.PACKAGE, timestamp=timestamp)
         self.management_event = package_event
-        self.app_id = None
+        self.app_id = package
 
     def __repr__(self, *args, **kwargs):
         return '%s: %s' % \
@@ -231,7 +234,7 @@ class NotificationEvent(Event):
             The notification action that has occurred
         app_id (str): The unique id for the application responsible for
             the notification
-        id (str): The id of the notification
+        notification_id (str): The id of the notification
         tag (str): The tag of the notification
     """
 
@@ -244,11 +247,11 @@ class NotificationEvent(Event):
         POSTED = 1
         REMOVED = 0
 
-    def __init__(self, timestamp, action, app_id, id, tag):
+    def __init__(self, timestamp, action, app_id, notification_id, tag):
         Event.__init__(self, event_type=EventType.NOTIFICATION, timestamp=timestamp)
         self.action = action
         self.app_id = app_id
-        self.id = id
+        self.notification_id = notification_id
         self.tag = tag
 
     def __repr__(self, *args, **kwargs):
@@ -268,7 +271,7 @@ class NetworkStatusEvent(Event):
     network connection state.
 
     Attributes:
-        status (:obj:'NetworkConnectionState'):  Network connection state
+        state (:obj:'NetworkConnectionState'):  Network connection state
     """
     def __init__(self, timestamp, state):
         Event.__init__(self, event_type=EventType.NETWORK_STATUS, timestamp=timestamp)
@@ -345,7 +348,7 @@ class BatteryPlugStateEvent(Event):
     battery plug state.
 
     Attributes:
-        status (:obj:'BatteryPlugState'): State of battery energy level
+        state (:obj:'BatteryPlugState'): State of battery energy level
     """
     def __init__(self, timestamp, state):
         Event.__init__(self, event_type=EventType.BATTERY_PLUG_STATE, timestamp=timestamp)
@@ -381,18 +384,18 @@ class BatteryTempEvent(Event):
     battery temperature level
 
     Attributes:
-        temp (int): Battery temperature value
+        temperature (int): Battery temperature value
     """
-    def __init__(self, timestamp, temp):
+    def __init__(self, timestamp, temperature):
         Event.__init__(self, event_type=EventType.BATTERY_TEMPERATURE, timestamp=timestamp)
-        self.temp = temp
+        self.temperature = temperature
 
     def __repr__(self, *args, **kwargs):
         return '%s: %d' % \
-               (Event.__repr__(self, args, kwargs), self.temp)
+               (Event.__repr__(self, args, kwargs), self.temperature)
 
 
-class StorageEvent(Event):
+class DeviceStorageEvent(Event):
     """ Represents storage level events
 
     Represents events related to the current device
@@ -401,8 +404,9 @@ class StorageEvent(Event):
     Attributes:
         state (:obj:'StorageState'): State of device storage
     """
-    def __init__(self, timestamp):
-        Event.__init__(self, event_type=EventType.STORAGE, timestamp=timestamp)
+    def __init__(self, timestamp, state):
+        Event.__init__(self, event_type=EventType.DEVICE_STORAGE, timestamp=timestamp)
+        self.state = state
 
     def __repr__(self, *args, **kwargs):
         return '%s: %s' % \
@@ -474,3 +478,133 @@ class BluetoothEvent(Event):
 class SystemMemorySnapshot(Event):
     def __init__(self, timestamp):
         Event.__init__(self, event_type=EventType.SYSTEM_MEMORY_SNAPSHOT, timestamp=timestamp)
+
+
+class EventJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, AppActivityUsageEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'app_id': obj.app_id,
+                    'source_class': obj.source_class,
+                    'usage_event': obj.usage_event.value}
+        elif isinstance(obj, ScreenEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, ScreenOrientationEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, PhoneEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, NotificationEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'action': obj.action.value,
+                    'app_id': obj.app_id,
+                    'notification_id': obj.notification_id,
+                    'tag': obj.tag}
+        elif isinstance(obj, NetworkStatusEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, NetworkTypeEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'network_type': obj.network_type.value}
+        elif isinstance(obj, BatteryEnergyEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, BatteryStatusEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.status.value}
+        elif isinstance(obj, BatteryPlugStateEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, BatteryLevelEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'level': obj.level}
+        elif isinstance(obj, BatteryTempEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'temperature': obj.temperature}
+        elif isinstance(obj, DeviceStorageEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, HeadsetEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'state': obj.state.value}
+        elif isinstance(obj, BluetoothEvent):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value,
+                    'connection_event': obj.connection_event.value}
+        elif isinstance(obj, SystemMemorySnapshot):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value}
+        elif isinstance(obj, Event):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value}
+        else:
+            return json.JSONEncoder.default(self, obj)
+
+
+def json_decode_event(obj):
+    if 'event_type' in obj:
+        event_type = EventType(obj['event_type'])
+        timestamp = dateutil.parser.parse(obj['timestamp'])
+        if event_type == EventType.PSEUDO:
+            return Event(timestamp=timestamp, event_type=EventType.PSEUDO)
+        elif event_type == EventType.APP_ACTIVITY_USAGE:
+            return AppActivityUsageEvent(timestamp=timestamp,
+                                         app_id=obj['app_id'],
+                                         source_class=obj['source_class'],
+                                         usage_event=AppActivityUsageEvent.UsageEvent(obj['usage_event']))
+        elif event_type == EventType.SCREEN:
+            return ScreenEvent(timestamp=timestamp, state=device.ScreenState(obj['state']))
+        elif event_type == EventType.SCREEN_ORIENTATION:
+            return ScreenOrientationEvent(timestamp=timestamp, state=device.ScreenOrientation(obj['state']))
+        elif event_type == EventType.PHONE:
+            return PhoneEvent(timestamp=timestamp, state=device.PhoneState(obj['state']))
+        elif event_type == EventType.NOTIFICATION:
+            return NotificationEvent(timestamp=timestamp,
+                                     action=NotificationEvent.NotificationAction(obj['action']),
+                                     app_id=obj['app_id'],
+                                     notification_id=obj['notification_id'],
+                                     tag=obj['tag'])
+        elif event_type == EventType.NETWORK_STATUS:
+            return NetworkStatusEvent(timestamp=timestamp,
+                                      state=device.NetworkConnectionState(obj['state']))
+        elif event_type == EventType.NETWORK_TYPE:
+            return NetworkTypeEvent(timestamp=timestamp,
+                                    network_type=device.NetworkType(obj['network_type']))
+        elif event_type == EventType.BATTERY_ENERGY_STATE:
+            return BatteryEnergyEvent(timestamp=timestamp,
+                                      state=device.BatteryEnergyState(obj['state']))
+        elif event_type == EventType.BATTERY_STATUS:
+            return BatteryStatusEvent(timestamp=timestamp,
+                                      status=device.BatteryStatus(obj['state']))
+        elif event_type == EventType.BATTERY_PLUG_STATE:
+            return BatteryPlugStateEvent(timestamp=timestamp,
+                                         state=device.BatteryPlugState(obj['state']))
+        elif event_type == EventType.BATTERY_LEVEL:
+            return BatteryLevelEvent(timestamp=timestamp, level=obj['level'])
+        elif event_type == EventType.BATTERY_TEMPERATURE:
+            return BatteryTempEvent(timestamp=timestamp, temperature=obj['temperature'])
+        elif event_type == EventType.DEVICE_STORAGE:
+            return DeviceStorageEvent(timestamp=timestamp, state=device.StorageState(obj['state']))
+        elif event_type == EventType.HEADSET:
+            return HeadsetEvent(timestamp=timestamp, state=device.HeadsetState(obj['state']))
+        elif event_type == EventType.BLUETOOTH:
+            return BluetoothEvent(timestamp=timestamp,
+                                  connection_event=BluetoothEvent.ConnectionEvent(obj['connection_event']))
+        elif event_type == EventType.SYSTEM_MEMORY_SNAPSHOT:
+            return SystemMemorySnapshot(timestamp=timestamp)
