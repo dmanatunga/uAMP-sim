@@ -1,8 +1,15 @@
-import abc
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
+from enum import Enum, unique
 
 
-class SimModule(metaclass=abc.ABCMeta):
+@unique
+class SimModuleType(Enum):
+    PRELOAD_PREDICTOR = 'preload-predictor'
+    REUSE_PREDICTOR = 'reuse-predictor'
+    MEMORY_MANAGER = 'memory-manager'
+
+
+class SimModule(metaclass=ABCMeta):
     def __init__(self, name, module_type, simulator):
         self.name = name
         self.module_type = module_type
@@ -23,7 +30,7 @@ class SimModule(metaclass=abc.ABCMeta):
         pass
 
 
-class TraceReader(metaclass=abc.ABCMeta):
+class TraceReader(metaclass=ABCMeta):
     def __init__(self, filename):
         self.trace_filename = filename
 
@@ -52,13 +59,9 @@ class TraceReader(metaclass=abc.ABCMeta):
         pass
 
 
-class SimulatorBase(metaclass=abc.ABCMeta):
+class SimulatorBase(metaclass=ABCMeta):
     @abstractmethod
     def build(self, config):
-        pass
-
-    @abstractmethod
-    def register(self, sim_module, override=False):
         pass
 
     @abstractmethod
@@ -78,7 +81,7 @@ class SimulatorBase(metaclass=abc.ABCMeta):
         pass
 
     @abstractmethod
-    def subscribe(self, event_type, callback, event_filter=None):
+    def subscribe(self, event_type, handler, event_filter=None):
         pass
 
     @abstractmethod
@@ -86,5 +89,5 @@ class SimulatorBase(metaclass=abc.ABCMeta):
         pass
 
     @abstractmethod
-    def register_alarm(self, alarm, callback):
+    def register_alarm(self, alarm, handler):
         pass

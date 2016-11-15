@@ -1,9 +1,11 @@
 #! /usr/bin/env python
 import argparse
+import configparser
 from collections import defaultdict, deque
 
 from device import DeviceState
 from sim_interface import SimulatorBase, SimModule
+from sim_modules import create_simulator_module
 from utils import PriorityQueue
 
 from trace_reader import get_trace_reader
@@ -27,6 +29,18 @@ class Simulator(SimulatorBase):
         self.debug_interval = 1
         self.debug_interval_cnt = 0
 
+    def has_module_instance(self, name):
+        return name in self.modules
+
+    def get_module_instance(self, name):
+        return self.modules[name]
+
+    def get_module_for_type(self, module_type):
+        if module_type in self.module_type_map:
+            return self.module_type_map[module_type][0]
+        else:
+            return None
+
     def register(self, sim_module, override=False):
         if not isinstance(sim_module, SimModule):
             raise TypeError("Expected SimModule object")
@@ -41,22 +55,29 @@ class Simulator(SimulatorBase):
         else:
             self.module_type_map[sim_module.get_type()].append(sim_module)
 
-    def has_module_instance(self, name):
-        return name in self.modules
-
-    def get_module_instance(self, name):
-        return self.modules[name]
-
-    def get_module_for_type(self, module_type):
-        if module_type in self.module_type_map:
-            return self.module_type_map[module_type][0]
-        else:
-            return None
-
     def build(self, args):
         self.verbose = args.verbose
         self.debug_mode = args.debug
+
         # Instantiate necessary modules based on config files
+        config = configparser.ConfigParser()
+        config.read(args.sim_config)
+
+        config['DEFAULT'] = {'modules': ''}
+
+        if 'Simulator' not in config:
+            raise Exception("Simulator section missing from config file")
+
+        sim_settings = config['Simulator']
+        modules_str = sim_settings['modules']
+        modules_list = modules_str.split(' ')
+
+        for module_name in modules_list:
+            module_settings = {}
+            if module_name in config:
+                module_settings = config[module_name]
+
+            self.register(get_simulator_module(module_name, self, module_settings))
 
         # Build list of modules
         for module in self.modules.values():
@@ -106,20 +127,20 @@ class Simulator(SimulatorBase):
         for module in self.modules.values():
             module.finish()
 
-    def subscribe(self, event_type, callback, event_filter=None):
+    def subscribe(self, event_type, handler, event_filter=None):
         if event_type not in self.event_listeners:
             self.event_listeners[event_type] = []
-        self.event_listeners[event_type].append((event_filter, callback))
+        self.event_listeners[event_type].append((event_filter, handler))
 
     def broadcast(self, event):
         # Get the set of listeners for the given event type
         listeners = self.event_listeners[event.event_type]
-        for (event_filter, callback) in listeners:
+        for (event_filter, handler) in listeners:
             # Send event to each subscribed listener
             if not event_filter or event_filter(event):
-                callback(event)
+                handler(event)
 
-    def register_alarm(self, alarm, callback):
+    def register_alarm(self, alarm, handler):
         pass
 
     def debug(self):
@@ -162,7 +183,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Run uamp_sim')
     parser.add_argument('--trace', type=str, required=True,
                         help='User log trace file')
-    parser.add_argument('--sim_config', type=str, required=False,
+    parser.add_argument('--sim_config', type=str, required=True,
                         help='Sim Configuration File')
     parser.add_argument('-v,--verbose', dest='verbose', action='store_true',
                         default=False, help='Print out simulation run data')
@@ -175,6 +196,7 @@ def build_sim(args):
     simulator = Simulator()
     simulator.build(args)
     return simulator
+
 
 if __name__ == "__main__":
     command_args = parse_args()

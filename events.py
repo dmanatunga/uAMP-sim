@@ -1,6 +1,5 @@
 from enum import Enum, unique
 import json
-from datetime import datetime
 import dateutil.parser
 import device
 
