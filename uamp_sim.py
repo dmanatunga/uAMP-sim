@@ -5,7 +5,7 @@ from collections import defaultdict, deque
 
 from device import DeviceState
 from sim_interface import SimulatorBase, SimModule
-from sim_modules import create_simulator_module
+from sim_modules import get_simulator_module
 from utils import PriorityQueue
 
 from trace_reader import get_trace_reader
@@ -37,7 +37,7 @@ class Simulator(SimulatorBase):
 
     def get_module_for_type(self, module_type):
         if module_type in self.module_type_map:
-            return self.module_type_map[module_type][0]
+            return self.module_type_map[module_type.value][0]
         else:
             return None
 
@@ -51,9 +51,9 @@ class Simulator(SimulatorBase):
         self.modules[sim_module.get_name()] = sim_module
 
         if override:
-            self.module_type_map[sim_module.get_type()].appendleft(sim_module)
+            self.module_type_map[sim_module.get_type().value].appendleft(sim_module)
         else:
-            self.module_type_map[sim_module.get_type()].append(sim_module)
+            self.module_type_map[sim_module.get_type().value].append(sim_module)
 
     def build(self, args):
         self.verbose = args.verbose
