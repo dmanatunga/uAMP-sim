@@ -7,9 +7,11 @@ import gzip
 
 class JsonTraceReader(TraceReader):
     def __init__(self, filename):
-        TraceReader.__init__(self, filename)
+        self.trace_filename = filename
         self.trace_logs = None
         self.trace_pos = 0
+        self.start_time = None
+        self.end_time = None
 
     def build(self):
         if self.trace_filename.endswith('.json'):
@@ -52,12 +54,20 @@ class JsonTraceReader(TraceReader):
                 break
         return events_list
 
+    def get_start_time(self):
+        return self.start_time
+
+    def get_end_time(self):
+        return self.end_time
+
 
 class PickleTraceReader(TraceReader):
     def __init__(self, filename):
-        TraceReader.__init__(self, filename)
+        self.trace_filename = filename
         self.trace_logs = None
         self.trace_pos = 0
+        self.start_time = None
+        self.end_time = None
 
     def build(self):
         if self.trace_filename.endswith('.pkl'):
@@ -99,6 +109,12 @@ class PickleTraceReader(TraceReader):
             else:
                 break
         return events_list
+
+    def get_start_time(self):
+        return self.start_time
+
+    def get_end_time(self):
+        return self.end_time
 
 
 def get_trace_reader(filename, trace_type=None):

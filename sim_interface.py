@@ -31,9 +31,6 @@ class SimModule(metaclass=ABCMeta):
 
 
 class TraceReader(metaclass=ABCMeta):
-    def __init__(self, filename):
-        self.trace_filename = filename
-
     @abstractmethod
     def build(self):
         pass
@@ -56,6 +53,14 @@ class TraceReader(metaclass=ABCMeta):
 
     @abstractmethod
     def end_of_trace(self):
+        pass
+
+    @abstractmethod
+    def get_start_time(self):
+        pass
+
+    @abstractmethod
+    def get_end_time(self):
         pass
 
 
