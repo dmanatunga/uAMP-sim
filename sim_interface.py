@@ -94,5 +94,13 @@ class SimulatorBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def register_alarm(self, alarm, handler):
+    def register_alarm(self, alarm):
+        pass
+
+    @abstractmethod
+    def get_current_time(self):
+        pass
+
+    @abstractmethod
+    def get_device_state(self):
         pass

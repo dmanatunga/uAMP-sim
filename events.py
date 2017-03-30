@@ -58,7 +58,8 @@ class EventType(Enum):
 
     # Simulator Events
     SIM = 'sim'
-    DEBUG = 'sim.debug'
+    SIM_DEBUG = 'sim.debug'
+    SIM_ALARM = 'sim.alarm'
 
 
 class Event:
@@ -477,6 +478,75 @@ class BluetoothEvent(Event):
 class SystemMemorySnapshot(Event):
     def __init__(self, timestamp):
         Event.__init__(self, event_type=EventType.SYSTEM_MEMORY_SNAPSHOT, timestamp=timestamp)
+
+
+class SimDebug(Event):
+    """ Simulator Debug Event
+    
+    Essentially a Pseudo event representing fact
+    that a debug should occur
+    
+    """
+    def __init__(self, timestamp):
+        Event.__init__(self, event_type=EventType.SIM_DEBUG,
+                       timestamp=timestamp)
+
+
+class SimAlarm(Event):
+    """ Simulation alarm event 
+    
+    An alarm event that can be used by simulator modules
+    to have specific functions be called during specific
+    time instances during simulation.
+    
+    Attributes:
+        handler (:obj:'function'): A handler function to be called
+        interval (:obj:'datetime':'timedelta'): A timedelta amount
+            to be used for repeating alarms. The amount specifies
+            the intervals at which alarms will fire. Defaults to 
+            None indicating that the Alarm will only fire once.
+        name ('str'): A name to give the alarm (used for debug purposes)
+            Defaults to empty string
+    """
+    def __init__(self, timestamp, handler, interval=None, name=""):
+        Event.__init__(self, event_type=EventType.SIM_ALARM,
+                       timestamp=timestamp)
+        self.handler = handler
+        self.interval = interval
+        self.active = True
+        self.name = name
+
+    def is_repeating(self):
+        """ Returns true if alarm repeats at a set interval """
+        return self.active and self.interval is not None
+
+    def fire(self):
+        """ Fire the alarm
+        
+        Calls the handler function stored in the alarm
+        object, and increments the timestamp 
+        """
+        if self.active:
+            # Call handler function
+            self.handler()
+
+            # Increment alarm to next timestamp if necessary
+            if self.interval:
+                self.timestamp += self.interval
+
+    def cancel(self):
+        """ Cancel the alarm
+        
+        This stops an alarm from firing. Canceled 
+        alarms cannot be reactivated.
+        """
+        self.active = False
+
+    def __repr__(self, *args, **kwargs):
+        if self.name:
+            return '[%s] Alarm' % (self.timestamp,)
+        else:
+            return '[%s] Alarm - %s' % (self.timestamp, self.name)
 
 
 class EventJsonEncoder(json.JSONEncoder):
