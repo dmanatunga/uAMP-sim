@@ -14,15 +14,26 @@ class SimModule(metaclass=ABCMeta):
         self.name = name
         self.module_type = module_type
         self.simulator = simulator
+        self.collect_stats = False
 
     def get_name(self):
-        return self.get_name()
+        return self.name
 
     def get_type(self):
         return self.module_type
 
+    def enable_stats_collection(self):
+        self.collect_stats = True
+
+    def disable_stats_collection(self):
+        self.collect_stats = False
+
     @abstractmethod
     def build(self):
+        pass
+
+    @abstractmethod
+    def print_stats(self, output):
         pass
 
     @abstractmethod

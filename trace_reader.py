@@ -23,6 +23,10 @@ class JsonTraceReader(TraceReader):
         else:
             raise Exception('Invalid JSON file type. Expected .json or .json.gz')
 
+        # Identify start and end time of trace
+        self.start_time = self.trace_logs[0].timestamp
+        self.end_time = self.trace_logs[-1].timestamp
+
     def finish(self):
         pass
 
@@ -78,6 +82,10 @@ class PickleTraceReader(TraceReader):
                 self.trace_logs = pickle.load(fp)
         else:
             raise Exception('Invalid JSON file type. Expected .json or .json.gz')
+
+        # Identify start and end time of trace
+        self.start_time = self.trace_logs[0].timestamp
+        self.end_time = self.trace_logs[-1].timestamp
 
     def finish(self):
         pass
