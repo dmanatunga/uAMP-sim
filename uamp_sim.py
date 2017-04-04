@@ -229,11 +229,11 @@ class Simulator(SimulatorBase):
         output_file = sys.stdout
         # Print status from all modules
         for sim_module in self._sim_modules.values():
-            header = "======== %s Stats ========\n", sim_module.get_name()
+            header = "======== %s Stats ========\n" % sim_module.get_name()
             footer = "=" * (len(header) - 1) + '\n'
-            output_file.write(header, sim_module.get_name())
+            output_file.write(header)
             sim_module.print_stats(output_file)
-            output_file.write(footer, sim_module.get_name())
+            output_file.write(footer)
 
         # Call finish for all modules
         for sim_module in self._sim_modules.values():
