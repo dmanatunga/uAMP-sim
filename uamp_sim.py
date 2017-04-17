@@ -38,6 +38,7 @@ class Simulator(SimulatorBase):
 
         self._event_listeners = defaultdict(deque)
         self._trace_reader = None
+        self._trace_executed = False
         self._verbose = False
         self._debug_mode = False
         self._debug_interval = 1
@@ -94,6 +95,12 @@ class Simulator(SimulatorBase):
         self._warmup_period = \
             self.__parse_warmup_setting(sim_settings['warmup_period'])
 
+        # Setup the trace file reader and initial simulator time
+        self._trace_reader = get_trace_reader(args.trace)
+        self._trace_reader.build()
+        self._trace_executed = False
+        self._current_time = self._trace_reader.get_start_time()
+
         for module_name in modules_list:
             module_settings = {}
             if module_name in config:
@@ -105,10 +112,7 @@ class Simulator(SimulatorBase):
         for sim_module in self._sim_modules.values():
             sim_module.build()
 
-    def run(self, trace_file):
-        self._trace_reader = get_trace_reader(trace_file)
-        self._trace_reader.build()
-
+    def run(self):
         # Check if we need to enter debug mode immediately
         if self._debug_mode:
             self._debug_interval_cnt = 0
@@ -213,9 +217,12 @@ class Simulator(SimulatorBase):
         if event.event_type == EventType.SIM_DEBUG:
             self.__debug()
         elif event.event_type == EventType.SIM_ALARM:
-            event.fire()
-            if event.is_repeating():
-                self._event_queue.push(event, (event.timestamp, Priority.ALARM))
+            if not self._trace_executed:
+                event.fire()
+                if event.is_repeating():
+                    self._event_queue.push(event, (event.timestamp, Priority.ALARM))
+        elif event.event_type == EventType.TRACE_END:
+            self._trace_executed = True
         else:
             self.broadcast(event)
 
@@ -275,8 +282,6 @@ class Simulator(SimulatorBase):
                 break
 
 
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Run uamp_sim')
     parser.add_argument('--trace', type=str, required=True,
@@ -299,4 +304,4 @@ def build_sim(args):
 if __name__ == "__main__":
     command_args = parse_args()
     sim = build_sim(command_args)
-    sim.run(command_args.trace)
+    sim.run()

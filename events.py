@@ -1,3 +1,4 @@
+import datetime
 from enum import Enum, unique
 import json
 import dateutil.parser
@@ -54,7 +55,12 @@ class EventType(Enum):
 
     SYSTEM_MEMORY_SNAPSHOT = 'system.memory_snapshot'
 
+    TRACE_START = 'trace.start'
+    TRACE_END = 'trace.end'
+
+    # Module Events
     PRELOAD_APP = 'preload_app'
+
 
     # Simulator Events
     SIM = 'sim'
@@ -480,6 +486,15 @@ class SystemMemorySnapshot(Event):
         Event.__init__(self, event_type=EventType.SYSTEM_MEMORY_SNAPSHOT, timestamp=timestamp)
 
 
+class TraceStart(Event):
+    def __init__(self, timestamp):
+        Event.__init__(self, event_type=EventType.TRACE_START, timestamp=timestamp)
+
+class TraceEnd(Event):
+    def __init__(self, timestamp):
+        Event.__init__(self, event_type=EventType.TRACE_END, timestamp=timestamp)
+
+
 class SimDebug(Event):
     """ Simulator Debug Event
     
@@ -619,9 +634,17 @@ class EventJsonEncoder(json.JSONEncoder):
         elif isinstance(obj, SystemMemorySnapshot):
             return {'timestamp': obj.timestamp.isoformat(),
                     'event_type': obj.event_type.value}
+        elif isinstance(obj, TraceStart):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value}
+        elif isinstance(obj, TraceEnd):
+            return {'timestamp': obj.timestamp.isoformat(),
+                    'event_type': obj.event_type.value}
         elif isinstance(obj, Event):
             return {'timestamp': obj.timestamp.isoformat(),
                     'event_type': obj.event_type.value}
+        elif isinstance(obj, datetime.datetime):
+            return obj.isoformat()
         else:
             return json.JSONEncoder.default(self, obj)
 
@@ -629,6 +652,7 @@ class EventJsonEncoder(json.JSONEncoder):
 def json_decode_event(obj):
     if 'event_type' in obj:
         event_type = EventType(obj['event_type'])
+
         timestamp = dateutil.parser.parse(obj['timestamp'])
         if event_type == EventType.PSEUDO:
             return Event(timestamp=timestamp, event_type=EventType.PSEUDO)
@@ -677,3 +701,11 @@ def json_decode_event(obj):
                                   connection_event=BluetoothEvent.ConnectionEvent(obj['connection_event']))
         elif event_type == EventType.SYSTEM_MEMORY_SNAPSHOT:
             return SystemMemorySnapshot(timestamp=timestamp)
+        elif event_type == EventType.TRACE_START:
+            return TraceStart(timestamp=timestamp)
+        elif event_type == EventType.TRACE_END:
+            return TraceEnd(timestamp=timestamp)
+        else:
+            raise Exception('Invalid Event Type')
+    else:
+        return obj

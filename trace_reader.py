@@ -1,3 +1,5 @@
+import dateutil
+
 import events
 from sim_interface import TraceReader
 import json
@@ -16,16 +18,19 @@ class JsonTraceReader(TraceReader):
     def build(self):
         if self.trace_filename.endswith('.json'):
             with open(self.trace_filename, 'r') as fp:
-                self.trace_logs = json.load(fp, object_hook=events.json_decode_event)
+                trace_data = json.load(fp, object_hook=events.json_decode_event)
         elif self.trace_filename.endswith('.json.gz'):
             with gzip.open(self.trace_filename, 'rt') as fp:
-                self.trace_logs = json.load(fp, object_hook=events.json_decode_event)
+                trace_data = json.load(fp, object_hook=events.json_decode_event)
         else:
             raise Exception('Invalid JSON file type. Expected .json or .json.gz')
 
         # Identify start and end time of trace
-        self.start_time = self.trace_logs[0].timestamp
-        self.end_time = self.trace_logs[-1].timestamp
+        self.start_time = dateutil.parser.parse(trace_data['start_time'])
+        self.end_time = dateutil.parser.parse(trace_data['end_time'])
+
+        # Get the list of logs in the trace
+        self.trace_logs = trace_data['logs']
 
     def finish(self):
         pass
@@ -76,16 +81,19 @@ class PickleTraceReader(TraceReader):
     def build(self):
         if self.trace_filename.endswith('.pkl'):
             with open(self.trace_filename, 'r') as fp:
-                self.trace_logs = pickle.load(fp)
+                trace_data = pickle.load(fp)
         elif self.trace_filename.endswith('.pkl.gz'):
             with gzip.open(self.trace_filename, 'rb') as fp:
-                self.trace_logs = pickle.load(fp)
+                trace_data = pickle.load(fp)
         else:
             raise Exception('Invalid JSON file type. Expected .json or .json.gz')
 
         # Identify start and end time of trace
-        self.start_time = self.trace_logs[0].timestamp
-        self.end_time = self.trace_logs[-1].timestamp
+        self.start_time = trace_data['start_time']
+        self.end_time = trace_data['end_time']
+
+        # Get the list of logs in the trace
+        self.trace_logs = trace_data['logs']
 
     def finish(self):
         pass

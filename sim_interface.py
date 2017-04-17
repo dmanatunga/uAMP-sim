@@ -93,7 +93,7 @@ class SimulatorBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def run(self, trace_file):
+    def run(self):
         pass
 
     @abstractmethod
